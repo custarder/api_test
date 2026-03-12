@@ -1,0 +1,33 @@
+name: "Auto Calculate Dev Time"
+description: "自動計算開發時間並回覆在 Issue 留言中"
+author: "custarder"
+
+# 給 Marketplace 顯示用的圖示和顏色
+branding:
+  icon: "clock"
+  color: "blue"
+
+inputs:
+  github-token:
+    description: "用來操作 Issue 的 GitHub Token"
+    required: true
+
+runs:
+  using: "composite" # 宣告這是一個把多個步驟包起來的 Action
+  steps:
+    - name: Install uv and Python
+      uses: astral-sh/setup-uv@v5
+      with:
+        python-version: "3.12"
+        enable-cache: false
+
+    - name: Install Dependencies
+      shell: bash
+      run: uv pip install --system PyGithub python-dateutil python-dotenv
+
+    - name: Run calculation script
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
+      run: python ${{ github.action_path }}/calc_time.py
