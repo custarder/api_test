@@ -1,0 +1,49 @@
+name: Auto Calculate Dev Time
+
+on:
+  # 1. 每天定時執行排程 (例如台灣時間每天半夜 12 點)
+  # 注意：GitHub Actions 使用 UTC 時間，台灣時間 00:00 = UTC 16:00
+  schedule:
+    - cron: "0 16 * * *"
+
+  # 2. 即時觸發：當 Issue 狀態改變或留言改變時
+  issues:
+    types: [closed] # Issue 被關閉時觸發
+  issue_comment:
+    types: [created, edited] # 有人新增或修改留言時觸發 (用來自動修復異常)
+
+  # 3. 允許 PM/管理員手動點擊按鈕執行 (補算舊票超級方便)
+  workflow_dispatch:
+
+permissions:
+  issues: write # 賦予機器人寫入留言和貼標籤的權限
+  contents: read
+
+jobs:
+  calculate-time:
+    runs-on: ubuntu-latest
+
+    # 避免短時間內重複觸發導致衝突 (Concurrency Control)
+    concurrency:
+      group: calculate-time-group
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install uv and Python
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Dependencies
+        # 根據你本地端的套件安裝
+        run: uv pip install PyGithub python-dateutil python-dotenv
+
+      - name: Run calculation script
+        env:
+          # 直接使用 GitHub Actions 內建的 Token，安全又方便
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: uv run python calc_time.py
